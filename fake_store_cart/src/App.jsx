@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from "react";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Navbar from "./components/Navbar";
-import ProductCard from "./components/ProductCard";
-import CartModal from "./components/CartModal";
+import ProductList from "./pages/ProductList";
+import CartPage from "./pages/CartPage"; // Ensure this matches your filename
 
 const App = () => {
   const [products, setProducts] = useState([]);
   const [cart, setCart] = useState([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Fetch products from Fake Store API
+  // 1. Fetch products from API on initial load
   useEffect(() => {
     const fetchProducts = async () => {
       try {
@@ -16,54 +16,74 @@ const App = () => {
         const data = await response.json();
         setProducts(data);
       } catch (error) {
-        console.error("Error fetching data:", error);
+        console.error("Error fetching products:", error);
       }
     };
     fetchProducts();
   }, []);
 
-  // Add to Cart Logic with Alert
+  // 2. Add to Cart / Remove from Cart Toggle Logic
   const addToCart = (product) => {
-    const isAlreadyInCart = cart.some((item) => item.id === product.id);
+    const isAlreadyInCart = cart.find((item) => item.id === product.id);
+
     if (isAlreadyInCart) {
-      alert("Item already added to the cart");
+      // If user clicks button while item is in cart, remove it (Requirement)
+      setCart(cart.filter((item) => item.id !== product.id));
     } else {
-      setCart([...cart, product]);
+      // Add new item with initial quantity of 1
+      setCart([...cart, { ...product, quantity: 1 }]);
     }
   };
 
-  // Remove from Cart Logic
+  // 3. Remove specifically from the Cart Page
   const removeFromCart = (id) => {
     setCart(cart.filter((item) => item.id !== id));
   };
 
-  return (
-    <div className="min-h-screen bg-gray-100 pb-10">
-      <Navbar cartCount={cart.length} openModal={() => setIsModalOpen(true)} />
-      
-      {/* Responsive Product Grid */}
-      <main className="container mx-auto px-4 mt-8">
-        <h1 className="text-3xl font-bold text-center mb-8">Our Products</h1>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {products.map((product) => (
-            <ProductCard 
-              key={product.id} 
-              product={product} 
-              addToCart={addToCart} 
-            />
-          ))}
-        </div>
-      </main>
+  // 4. Increase/Decrease Quantity Logic (Requirement)
+  const updateQuantity = (id, delta) => {
+    setCart(
+      cart.map((item) =>
+        item.id === id
+          ? { ...item, quantity: Math.max(1, item.quantity + delta) }
+          : item
+      )
+    );
+  };
 
-      {/* Cart Modal */}
-      {isModalOpen && (
-        <CartModal
-          cart={cart}
-          closeModal={() => setIsModalOpen(false)}
-          removeFromCart={removeFromCart}
-        />
-      )}
-    </div>
+  return (
+    <Router>
+      <div className="min-h-screen bg-gray-50">
+        {/* Navbar is outside Routes so it stays visible on every page */}
+        <Navbar cartCount={cart.length} />
+
+        <Routes>
+          {/* Main Product Page */}
+          <Route
+            path="/"
+            element={
+              <ProductList
+                products={products}
+                cart={cart}
+                addToCart={addToCart}
+              />
+            }
+          />
+
+          {/* Dedicated Cart Page */}
+          <Route
+            path="/cart"
+            element={
+              <CartPage
+                cart={cart}
+                removeFromCart={removeFromCart}
+                updateQuantity={updateQuantity}
+              />
+            }
+          />
+        </Routes>
+      </div>
+    </Router>
   );
 };
 
